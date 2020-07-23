@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.res.AssetManager;
 import android.content.res.Configuration;
@@ -149,7 +150,6 @@ public class MainActivity extends AppCompatActivity {
         setDefaultPreferences();
         setPreferences(getApplicationContext(), PREF_DATALOAD_ERROR_FLAG, false);
         loadDefaultAsset();
-
         prefs = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         assetManager = getAssets();
         toolbar = findViewById(R.id.toolbar);
@@ -176,7 +176,11 @@ public class MainActivity extends AppCompatActivity {
                     if (is_kca_installed) {
                         if (!prefs.getBoolean(PREF_SVC_ENABLED, false)) {
                             loadTranslationData(getApplicationContext());
-                            startService(intent);
+//                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+//                                MainActivity.this.startForegroundService(intent);
+//                            } else {
+                                MainActivity.this.startService(intent);
+//                            }
                         }
                     } else {
                         Toast.makeText(getApplicationContext(), getString(R.string.ma_toast_kancolle_not_installed), Toast.LENGTH_LONG).show();
@@ -311,6 +315,16 @@ public class MainActivity extends AppCompatActivity {
                     final JsonObject response_data = new JsonParser().parse(response).getAsJsonObject();
                     if(response_data.has("imageSize")){
                         imageSize = response_data.get("imageSize").getAsString();
+                    }
+                    String serverVersionName = response_data.get("versionName").getAsString();
+                    int serverName = Integer.parseInt(serverVersionName.replace(".", "").replace("_", ""));
+                    PackageInfo packageInfo = getApplicationContext()
+                            .getPackageManager()
+                            .getPackageInfo(getPackageName(), 0);
+                    String appVersionName = packageInfo.versionName;
+                    int appName = Integer.parseInt(appVersionName.replace(".", "").replace("_", ""));
+                    if(appName > serverName){
+                        return;
                     }
                     handler.post(() -> {
                         UpdateAppUtils.from(this)

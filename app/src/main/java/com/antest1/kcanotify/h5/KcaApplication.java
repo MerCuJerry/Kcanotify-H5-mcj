@@ -24,6 +24,7 @@ public class KcaApplication extends MultiDexApplication {
     public static Activity gameActivity;
     public static boolean isCheckVersion = false;
     public static long checkVersionDate = 0;
+    private static final String PROCESSNAME = "com.antest1.kcanotify.h5";
 
     @Override
     protected void attachBaseContext(Context base) {
@@ -56,6 +57,13 @@ public class KcaApplication extends MultiDexApplication {
 
         LocaleUtils.updateConfig(this, getBaseContext().getResources().getConfiguration());
         ACRA.init(this);
+
+        /*if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            String processName = getProcessName();
+            if (!PROCESSNAME.equals(processName)) {
+                WebView.setDataDirectorySuffix("modWeb");
+            }
+        }*/
     }
 
     private static KcaApplication application;

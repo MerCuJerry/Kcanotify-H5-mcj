@@ -39,6 +39,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSyntaxException;
+
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -54,10 +55,6 @@ import java.util.Locale;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
 import static android.support.v4.app.NotificationManagerCompat.IMPORTANCE_DEFAULT;
 import static android.support.v4.app.NotificationManagerCompat.IMPORTANCE_HIGH;
@@ -271,7 +268,6 @@ public class KcaService extends Service {
         loadSimpleExpeditionInfoFromStorage(getApplicationContext());
         loadShipInitEquipCountFromStorage(getApplicationContext());
         loadQuestTrackDataFromStorage(dbHelper, getApplicationContext());
-        dbHelper.initQuestCheck();
         dbHelper.initExpScore();
 
         showDataLoadErrorToast(getApplicationContext(), getBaseContext(), getStringWithLocale(R.string.download_check_error));
@@ -977,7 +973,6 @@ public class KcaService extends Service {
                 } else if (jsonDataObj.has("api_data")) {
                     JsonObject api_data = jsonDataObj.getAsJsonObject("api_data");
                     KcaQuestViewService.setApiData(api_data);
-                    dbHelper.updateQuestCheck(api_tab_id, api_data);
                     startService(new Intent(getBaseContext(), KcaQuestViewService.class)
                             .setAction(REFRESH_QUESTVIEW_ACTION).putExtra("tab_id", api_tab_id));
                 }

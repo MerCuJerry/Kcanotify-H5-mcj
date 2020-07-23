@@ -3,6 +3,7 @@ package com.antest1.kcanotify.h5;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.SystemClock;
 import android.util.AttributeSet;
@@ -13,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.ConsoleMessage;
 import android.webkit.CookieManager;
+import android.webkit.HttpAuthHandler;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -31,9 +33,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static com.antest1.kcanotify.h5.KcaConstants.ERROR_TYPE_QUESTVIEW;
 import static com.antest1.kcanotify.h5.KcaConstants.KCANOTIFY_DB_VERSION;
-import static com.antest1.kcanotify.h5.KcaUtils.getStringFromException;
 
 public class GameWebView extends WebView implements GameView{
     public GameWebView(Context context) {
@@ -85,8 +85,19 @@ public class GameWebView extends WebView implements GameView{
         hostNameOoi = prefs.getString("ooi_host_name", "ooi.moe");
         if(hostNameOoi.equals("")) hostNameOoi = "ooi.moe";
 
+        if(hostNameOoi.startsWith("http")) {
+            hostNameOoi = hostNameOoi + "/poi";
+        } else {
+            hostNameOoi = "http://" + hostNameOoi + "/poi";
+        }
+
+        boolean backgroundPri = true;
         if (prefs.getBoolean("background_play", true)) {
             this.setActiveInBackground(true);
+            backgroundPri = false;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            setRendererPriorityPolicy(RENDERER_PRIORITY_IMPORTANT, backgroundPri);
         }
 
         CookieManager cookieManager = CookieManager.getInstance();
@@ -123,7 +134,15 @@ public class GameWebView extends WebView implements GameView{
         mWebSettings.setJavaScriptEnabled(true);
         mWebSettings.setMediaPlaybackRequiresUserGesture(false);
 
-        WebView.setWebContentsDebuggingEnabled(true);
+        WebView.setWebContentsDebuggingEnabled(false);
+
+        if(prefs.getBoolean("clear_cache_start", false)) {
+            this.clearCache(true);
+            this.clearHistory();
+            SharedPreferences.Editor editor = prefs.edit();
+            editor.putBoolean("clear_cache_start", false);
+            editor.apply();
+        }
 
         //设置WebChromeClient类
         this.setWebChromeClient(new WebChromeClient() {
@@ -155,6 +174,15 @@ public class GameWebView extends WebView implements GameView{
                 detectGameStartAndFit(view);
                 detectLoginAndFill(view, prefs);
                 detectAndHandleLoginError(view, prefs);
+            }
+
+            @Override
+            public void onReceivedHttpAuthRequest(WebView view, HttpAuthHandler handler, String host, String realm) {
+                if(gameActivity.prefs.getBoolean("ooi_host_auth", false)) {
+                    handler.proceed(gameActivity.prefs.getString("ooi_host_auth_name", ""), gameActivity.prefs.getString("ooi_host_auth_pwd", ""));
+                } else {
+                    super.onReceivedHttpAuthRequest(view, handler, host, realm);
+                }
             }
 
             @Override
@@ -200,7 +228,7 @@ public class GameWebView extends WebView implements GameView{
                 this.loadUrl(GameConnection.DMM_START_URL);
                 return;
             case OOI:
-                this.loadUrl("http://" + hostNameOoi + "/poi");
+                this.loadUrl(hostNameOoi);
         }
     }
 
@@ -233,7 +261,7 @@ public class GameWebView extends WebView implements GameView{
     }
 
     private void detectLoginAndFill(WebView view, SharedPreferences prefs) {
-        if (view.getUrl() != null && view.getUrl().equals("http://" + hostNameOoi + "/")) {
+        if (view.getUrl() != null && view.getUrl().contains(hostNameOoi.substring(0, hostNameOoi.length() - 3))) {
             boolean isAutoUser = prefs.getBoolean("ooi_auto_user", false);
             if (isAutoUser) {
                 String userName = prefs.getString("dmm_user", "");
@@ -261,7 +289,7 @@ public class GameWebView extends WebView implements GameView{
     }
 
     private void detectGameStartAndFit(WebView view) {
-        if (view.getUrl() != null && view.getUrl().equals("http://" + hostNameOoi + "/poi")) {
+        if (view.getUrl() != null && view.getUrl().equals(hostNameOoi)) {
             fitGameLayout();
         }
         if (view.getUrl() != null && view.getUrl().equals(GameConnection.DMM_START_URL)) {
@@ -307,14 +335,14 @@ public class GameWebView extends WebView implements GameView{
 
     private void detectLoginExpireAndReload(String requestUrl, String respData){
         // For OOI only
-        if(requestUrl.contains("api_req_member/get_incentive") && requestUrl.contains("http://" + hostNameOoi + "/")){
+        if(requestUrl.contains("api_req_member/get_incentive") && requestUrl.contains(hostNameOoi.substring(0, hostNameOoi.length() - 3))){
             try {
                 JSONObject respDataJson = new JSONObject(respData.substring(7));
                 if(respDataJson.has("api_result") && respDataJson.getInt("api_result") != 1){
                     gameActivity.runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
-                            GameWebView.this.loadUrl("http://" + hostNameOoi + "/");
+                            GameWebView.this.loadUrl(hostNameOoi.substring(0, hostNameOoi.length() - 3));
                         }
                     });
                     Toast.makeText(gameActivity, "登录过期，正在跳转到登录页面！", Toast.LENGTH_LONG).show();
