@@ -25,7 +25,6 @@ import android.os.Vibrator;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.ContextCompat;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -34,7 +33,6 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
-import android.widget.Toast;
 
 import com.google.common.io.ByteStreams;
 import com.google.gson.Gson;
@@ -745,10 +743,18 @@ public class KcaUtils {
             try {
                 bitmap = BitmapFactory.decodeStream(new FileInputStream(myImageFile), null, options);
             } catch (FileNotFoundException e) {
-                e.printStackTrace();
-                setPreferences(context, PREF_DATALOAD_ERROR_FLAG, true);
-                if (helper != null) helper.recordErrorLog(ERROR_TYPE_DATALOAD, name, "getFairyImageFromStorage", "0", getStringFromException(e));
-                bitmap = BitmapFactory.decodeResource(context.getResources(), R.mipmap.noti_icon_0);
+                try {
+                    int item_id =KcaUtils.getId(name, R.mipmap.class);
+                    bitmap = BitmapFactory.decodeResource(KcaApplication.getInstance().getResources(), item_id);
+                } catch (Exception ex){
+                    e.printStackTrace();
+                }
+                if(bitmap == null) {
+                    setPreferences(context, PREF_DATALOAD_ERROR_FLAG, true);
+                    if (helper != null)
+                        helper.recordErrorLog(ERROR_TYPE_DATALOAD, name, "getFairyImageFromStorage", "0", getStringFromException(e));
+                    bitmap = BitmapFactory.decodeResource(context.getResources(), R.mipmap.noti_icon_0);
+                }
             }
             if (bitmap == null) {
                 setPreferences(context, PREF_DATALOAD_ERROR_FLAG, true);
@@ -776,21 +782,27 @@ public class KcaUtils {
         } else if (FAIRY_SPECIAL_FLAG && fairy_id >= FAIRY_SPECIAL_PREFIX) {
             view.setImageResource(getId(name, R.mipmap.class));
         } else {
-            view.setImageResource(R.mipmap.noti_icon_0);
+            int item_id = R.mipmap.noti_icon_0;
+            try {
+                item_id =KcaUtils.getId(name, R.mipmap.class);
+            } catch (Exception e){
+                e.printStackTrace();
+            }
+            view.setImageResource(item_id);
         }
     }
 
     public static void showDataLoadErrorToast(Context ac, Context bc, String text) {
-        if (getBooleanPreferences(ac, PREF_DATALOAD_ERROR_FLAG)) {
+        /*if (getBooleanPreferences(ac, PREF_DATALOAD_ERROR_FLAG)) {
             KcaCustomToast customToast = new KcaCustomToast(ac);
             showCustomToast(ac, bc, customToast, text, Toast.LENGTH_LONG, ContextCompat.getColor(ac, R.color.colorHeavyDmgStatePanel));
-        }
+        }*/
     }
 
     public static void showDataLoadErrorToast(Context context, String text) {
-        if (getBooleanPreferences(context, PREF_DATALOAD_ERROR_FLAG)) {
+        /*if (getBooleanPreferences(context, PREF_DATALOAD_ERROR_FLAG)) {
             Toast.makeText(context, text, Toast.LENGTH_LONG).show();
-        }
+        }*/
     }
 
     public static boolean checkOnline(Context context) {
